@@ -58,9 +58,10 @@
       toast.style.borderRadius = '14px';
       toast.style.color = '#fff';
       toast.style.boxShadow = '0 12px 28px rgba(0,0,0,.18)';
-      toast.style.background = type === 'error'
-        ? 'rgba(181,61,85,.96)'
-        : 'rgba(47,125,85,.96)';
+      toast.style.background =
+        type === 'error'
+          ? 'rgba(181,61,85,.96)'
+          : 'rgba(47,125,85,.96)';
       wrap.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     },
@@ -402,7 +403,7 @@
       await this.load();
       this.renderTable();
       this.updateSummary();
-      this.calculatePrice();
+      this.calculatePrice(true, true);
       this.autoEstimateDate();
       this.renderSizeOptions();
       this.renderFabricOptions();
@@ -433,16 +434,36 @@
         el.dataset.bound = '1';
 
         el.addEventListener('input', () => {
-          this.calculatePrice();
+          if (id === 'pedido-precio') {
+            this.calculatePrice(false, false);
+          } else if (id === 'pedido-anticipo') {
+            this.calculatePrice(false, true);
+          } else {
+            this.calculatePrice(true, true);
+          }
+
           this.autoEstimateDate();
           this.updateSummary();
         });
 
         el.addEventListener('change', () => {
-          this.calculatePrice();
+          if (id === 'pedido-precio') {
+            this.calculatePrice(false, false);
+          } else if (id === 'pedido-anticipo') {
+            this.calculatePrice(false, true);
+          } else {
+            this.calculatePrice(true, true);
+          }
+
           this.autoEstimateDate();
           this.updateSummary();
         });
+
+        if (id === 'pedido-precio') {
+          el.addEventListener('blur', () => {
+            this.calculatePrice(false, true);
+          });
+        }
       });
     },
 
@@ -576,7 +597,7 @@
         await this.load();
         this.renderTable();
         this.updateSummary();
-        this.calculatePrice();
+        this.calculatePrice(true, true);
         this.autoEstimateDate();
         this.renderSizeOptions();
         this.renderFabricOptions();
@@ -592,7 +613,7 @@
           AppState.selectedFabric = null;
           this.setAutoCode();
           this.resetMeasurePreview();
-          this.calculatePrice();
+          this.calculatePrice(true, true);
           this.autoEstimateDate();
           this.updateSummary();
           this.renderSizeOptions();
@@ -610,15 +631,21 @@
       }
     },
 
-    calculatePrice() {
+    calculatePrice(forceAutoPrice = false, updateBalanceOnly = false) {
       const prenda = $('#pedido-prenda')?.value || 'otro';
-      const cantidad = Number($('#pedido-cantidad')?.value || 1);
+      const cantidad = Math.max(Number($('#pedido-cantidad')?.value || 1), 1);
       const precioInput = $('#pedido-precio');
       const anticipoInput = $('#pedido-anticipo');
       const saldoInput = $('#pedido-saldo');
+      const telaInput = $('#pedido-tela');
 
+      const telaRaw = (telaInput?.value || '').toLowerCase().trim();
+      if (telaRaw) AppState.selectedFabric = telaRaw;
+
+      const telaKey = AppState.selectedFabric || telaRaw || '';
       const base = Catalog.prendas[prenda] || 0;
-      const fabric = Catalog.telas[AppState.selectedFabric] || 0;
+      const fabric = Catalog.telas[telaKey] || 0;
+
       const sizeFactor =
         ['XL', 'XXL'].includes(AppState.selectedSize)
           ? 1.12
@@ -626,11 +653,27 @@
             ? 0.96
             : 1;
 
-      const auto = Math.round((base + fabric) * sizeFactor * Math.max(cantidad, 1));
-      const manual = Number(precioInput?.value || 0);
-      const total = manual > 0 ? manual : auto;
+      const auto = Math.round((base + fabric) * sizeFactor * cantidad);
 
-      if (precioInput && manual === 0) precioInput.value = total;
+      const rawManual = precioInput ? precioInput.value.trim() : '';
+      const hasManualValue = rawManual !== '' && !Number.isNaN(Number(rawManual));
+      const isFocused = document.activeElement === precioInput;
+
+      let total = auto;
+
+      if (updateBalanceOnly) {
+        total = hasManualValue ? Number(rawManual) : auto;
+      } else if (forceAutoPrice) {
+        if (precioInput) precioInput.value = auto;
+        total = auto;
+      } else if (hasManualValue) {
+        total = Number(rawManual);
+      } else if (!isFocused) {
+        if (precioInput) precioInput.value = auto;
+        total = auto;
+      } else {
+        total = auto;
+      }
 
       const anticipo = Number(anticipoInput?.value || 0);
       const saldo = Math.max(total - anticipo, 0);
@@ -697,7 +740,7 @@
         btn.addEventListener('click', () => {
           AppState.selectedSize = btn.dataset.size;
           this.renderSizeOptions();
-          this.calculatePrice();
+          this.calculatePrice(true, true);
           this.updateSummary();
         });
       });
@@ -719,7 +762,7 @@
           const tela = $('#pedido-tela');
           if (tela) tela.value = btn.dataset.fabric;
           this.renderFabricOptions();
-          this.calculatePrice();
+          this.calculatePrice(true, true);
           this.updateSummary();
         });
       });
@@ -785,7 +828,7 @@
       this.renderSizeOptions();
       this.renderFabricOptions();
       this.renderColorOptions();
-      this.calculatePrice();
+      this.calculatePrice(false, true);
       this.updateSummary();
 
       if (order.clienteid) {
@@ -858,17 +901,29 @@
 
           if (!order) return;
 
-          const deposit = prompt('Nuevo abono:', order.anticipo || 0);
+          const deposit = prompt('Nuevo abono:', '');
           if (deposit === null) return;
 
-          const anticipo = Number(deposit);
-          if (Number.isNaN(anticipo) || anticipo < 0) {
+          const nuevoAbono = Number(deposit);
+          if (Number.isNaN(nuevoAbono) || nuevoAbono <= 0) {
             return Utils.showToast('Abono inválido', 'error');
           }
 
+          const anticipoActual = Number(order.anticipo || 0);
+          const precioActual = Number(order.precio || 0);
+          const anticipoTotal = anticipoActual + nuevoAbono;
+          const saldopendiente = Math.max(precioActual - anticipoTotal, 0);
+
+          const nuevoEstado =
+            saldopendiente === 0 && order.estado !== 'cancelado'
+              ? 'terminado'
+              : order.estado;
+
           const res = await Api.updateOrder(order._id, {
-            anticipo,
-            precio: Number(order.precio || 0)
+            anticipo: anticipoTotal,
+            precio: precioActual,
+            saldopendiente,
+            estado: nuevoEstado
           });
 
           if (!res.ok || !res.data.ok) {
