@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Costuras Elegantes | Iniciar sesión</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-card">
+      <div class="auth-brand">
+        <span class="auth-brand-badge">CE</span>
+        <div>
+          <h1>Costuras Elegantes</h1>
+          <p>Gestión de clientes, medidas y pedidos</p>
+        </div>
+      </div>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <div id="auth-error" class="auth-error" style="display:none;">
+          <span id="auth-error-message"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="auth-username">Usuario</label>
+          <input
+            id="auth-username"
+            name="username"
+            type="text"
+            placeholder="Ingrese su usuario"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password">Contraseña</label>
+          <div class="password-wrap">
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              placeholder="Ingrese su contraseña"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" id="togglePasswordBtn" class="btn btn--secondary btn--small">
+              Ver
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="auth-role">Rol</label>
+          <select id="auth-role" name="role" required>
+            <option value="">Seleccione</option>
+            <option value="admin">Administrador</option>
+            <option value="operador">Operador</option>
+            <option value="modista">Modista</option>
+          </select>
+        </div>
+
+        <button id="submitBtn" type="submit" class="btn btn--primary btn--block">
+          Iniciar sesión
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.AuthModule) {
+        window.AuthModule.init();
+      }
+    });
+  </script>
+</body>
+</html>

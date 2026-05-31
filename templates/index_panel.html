@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Costuras Elegantes | Panel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body class="dashboard-page">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-badge">CE</div>
+        <div>
+          <h2>Costuras Elegantes</h2>
+          <p>Panel de control</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="sidebar-menu-link sidebar-menu-link--active" data-section="dashboard">Dashboard</a>
+
+        <button type="button" id="clientesGroupToggle" class="sidebar-group-btn">Clientes</button>
+        <div id="clientesSubmenu" class="sidebar-submenu">
+          <a href="#" class="sidebar-menu-link" data-section="clientes-lista">Lista de clientes</a>
+          <a href="#" class="sidebar-menu-link" data-section="clientes-crear">Nuevo cliente</a>
+        </div>
+
+        <button type="button" id="medidasGroupToggle" class="sidebar-group-btn">Medidas</button>
+        <div id="medidasSubmenu" class="sidebar-submenu">
+          <a href="#" class="sidebar-menu-link" data-section="medidas-crear">Registrar medidas</a>
+        </div>
+
+        <button type="button" id="pedidosGroupToggle" class="sidebar-group-btn">Pedidos</button>
+        <div id="pedidosSubmenu" class="sidebar-submenu">
+          <a href="#" class="sidebar-menu-link" data-section="pedidos-lista">Lista de pedidos</a>
+          <a href="#" class="sidebar-menu-link" data-section="pedidos-crear">Nuevo pedido</a>
+        </div>
+      </nav>
+    </aside>
+
+    <div class="main-panel">
+      <header class="topbar">
+        <nav class="nav-list">
+          <a href="#" class="nav-list-link nav-list-link--active" data-section="dashboard">Inicio</a>
+          <a href="#" class="nav-list-link" data-section="clientes-crear">Clientes</a>
+          <a href="#" class="nav-list-link" data-section="medidas-crear">Medidas</a>
+          <a href="#" class="nav-list-link" data-section="pedidos-crear">Pedidos</a>
+        </nav>
+
+        <div class="user-menu">
+          <button type="button" id="userMenuTrigger" class="user-menu-trigger">
+            <span id="currentUserName">Usuario</span>
+          </button>
+          <div id="userMenuDropdown" class="user-menu-dropdown">
+            <a href="#" id="logoutBtn">Cerrar sesión</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="content-section content-section--active" data-section="dashboard">
+          <div class="section-header">
+            <h1>Dashboard</h1>
+            <p>Resumen general del sistema</p>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <h3>Total Clientes</h3>
+              <strong id="stat-total-clientes">0</strong>
+              <p>Clientes registrados</p>
+            </article>
+
+            <article class="stat-card">
+              <h3>Pedidos Pendientes</h3>
+              <strong id="stat-pedidos-pendientes">0</strong>
+              <p>Esperando procesamiento</p>
+            </article>
+
+            <article class="stat-card">
+              <h3>Ingresos Totales</h3>
+              <strong id="stat-ingresos">$0</strong>
+              <p>Este mes</p>
+            </article>
+
+            <article class="stat-card">
+              <h3>Completados</h3>
+              <strong id="stat-pedidos-completados">0</strong>
+              <p>Entregados este mes</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-section" data-section="clientes-lista">
+          <div class="section-header">
+            <h1>Lista de clientes</h1>
+            <p>Clientes registrados en el sistema</p>
+          </div>
+
+          <div class="table-card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>Documento</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="clientesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-section" data-section="clientes-crear">
+          <div class="section-header">
+            <h1>Nuevo cliente</h1>
+            <p>Registro de clientes</p>
+          </div>
+
+          <div class="form-card">
+            <form id="clienteForm" class="form-grid" novalidate>
+              <div class="form-group">
+                <label for="cliente-codigo">Código Cliente</label>
+                <input id="cliente-codigo" name="codigo" type="text" readonly placeholder="Auto-generado por el sistema" />
+                <small>Auto-generado por el sistema</small>
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-genero">Género</label>
+                <select id="cliente-genero" name="genero">
+                  <option value="">Seleccione</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-nombre">Nombre *</label>
+                <input id="cliente-nombre" name="nombre" type="text" required />
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-apellido">Apellido *</label>
+                <input id="cliente-apellido" name="apellido" type="text" required />
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-documento">Cédula/Documento *</label>
+                <input id="cliente-documento" name="documento" type="text" minlength="6" required />
+                <small>Mínimo 6 dígitos</small>
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-telefono">Teléfono *</label>
+                <input id="cliente-telefono" name="telefono" type="text" required />
+              </div>
+
+              <div class="form-group">
+                <label for="cliente-email">Email *</label>
+                <input id="cliente-email" name="email" type="email" required />
+              </div>
+
+              <div class="form-group form-group--full">
+                <label for="cliente-direccion">Dirección</label>
+                <input id="cliente-direccion" name="direccion" type="text" />
+              </div>
+
+              <div class="form-group form-group--full">
+                <label for="cliente-observaciones">Observaciones</label>
+                <textarea id="cliente-observaciones" name="observaciones" rows="4"></textarea>
+              </div>
+
+              <div class="form-actions form-group--full">
+                <button type="submit" class="btn btn--primary">Guardar Cliente</button>
+                <button type="reset" class="btn btn--secondary">Limpiar Formulario</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="content-section" data-section="medidas-crear">
+          <div class="section-header">
+            <h1>Registrar medidas</h1>
+            <p>Medidas corporales del cliente</p>
+          </div>
+
+          <div class="form-card">
+            <form id="medidasForm" class="form-grid" novalidate>
+              <div class="form-group form-group--full">
+                <label for="medidas-cliente">Cliente *</label>
+                <select id="medidas-cliente" name="clienteid" required>
+                  <option value="">Seleccione un cliente</option>
+                </select>
+              </div>
+
+              <div class="subsection-title form-group--full">Torso Superior</div>
+
+              <div class="form-group">
+                <label for="medidas-cuello">Cuello (cm)</label>
+                <input id="medidas-cuello" name="cuello" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-hombro">Hombro (cm)</label>
+                <input id="medidas-hombro" name="hombro" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-pecho">Pecho (cm)</label>
+                <input id="medidas-pecho" name="pecho" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-cintura">Cintura (cm)</label>
+                <input id="medidas-cintura" name="cintura" type="number" step="0.1" />
+              </div>
+
+              <div class="subsection-title form-group--full">Torso Inferior</div>
+
+              <div class="form-group">
+                <label for="medidas-cadera">Cadera (cm)</label>
+                <input id="medidas-cadera" name="cadera" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-tiro">Tiro (cm)</label>
+                <input id="medidas-tiro" name="tiro" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-largopantalon">Largo de Pantalón (cm)</label>
+                <input id="medidas-largopantalon" name="largopantalon" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-entrepierna">Entrepierna (cm)</label>
+                <input id="medidas-entrepierna" name="entrepierna" type="number" step="0.1" />
+              </div>
+
+              <div class="subsection-title form-group--full">Brazos y Mangas</div>
+
+              <div class="form-group">
+                <label for="medidas-largototal">Largo Total (cm)</label>
+                <input id="medidas-largototal" name="largototal" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-largomanga">Largo de Manga (cm)</label>
+                <input id="medidas-largomanga" name="largomanga" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-anchomanga">Ancho de Manga (cm)</label>
+                <input id="medidas-anchomanga" name="anchomanga" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-contornobrazo">Contorno de Brazo (cm)</label>
+                <input id="medidas-contornobrazo" name="contornobrazo" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group">
+                <label for="medidas-muneca">Muñeca (cm)</label>
+                <input id="medidas-muneca" name="muneca" type="number" step="0.1" />
+              </div>
+
+              <div class="form-group form-group--full">
+                <label for="medidas-observaciones">Observaciones</label>
+                <textarea id="medidas-observaciones" name="observaciones" rows="4"></textarea>
+              </div>
+
+              <div class="subsection-title form-group--full">Notas sobre las Medidas</div>
+
+              <div class="form-actions form-group--full">
+                <button type="submit" class="btn btn--primary">Guardar Medidas</button>
+                <button type="reset" class="btn btn--secondary">Limpiar</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="content-section" data-section="pedidos-lista">
+          <div class="section-header">
+            <h1>Lista de pedidos</h1>
+            <p>Pedidos registrados en el sistema</p>
+          </div>
+
+          <div class="table-card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código Pedido</th>
+                    <th>Cliente</th>
+                    <th>Prenda</th>
+                    <th>Cantidad</th>
+                    <th>Estado</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="pedidosTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-section" data-section="pedidos-crear">
+          <div class="section-header">
+            <h1>Nuevo pedido</h1>
+            <p>Registro y seguimiento del pedido</p>
+          </div>
+
+          <div class="order-layout">
+            <div class="form-card">
+              <form id="pedidoForm" class="form-grid" novalidate>
+                <div class="subsection-title form-group--full">Información Básica</div>
+
+                <div class="form-group">
+                  <label for="pedido-codigo">Código Pedido</label>
+                  <input id="pedido-codigo" name="codigo" type="text" readonly />
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-cliente">Cliente *</label>
+                  <select id="pedido-cliente" name="clienteid" required>
+                    <option value="">Seleccione un cliente</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-fecha-entrega">Fecha de Entrega *</label>
+                  <input id="pedido-fecha-entrega" name="fechaentrega" type="date" required />
+                  <small id="etaText">Entrega sugerida: Pendiente</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-estado">Estado *</label>
+                  <select id="pedido-estado" name="estado" required>
+                    <option value="">Seleccione</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en proceso">En Proceso</option>
+                    <option value="terminado">Terminado</option>
+                    <option value="entregado">Entregado</option>
+                  </select>
+                </div>
+
+                <div class="subsection-title form-group--full">Detalles de la Prenda</div>
+
+                <div class="form-group">
+                  <label for="pedido-prenda">Tipo de Prenda *</label>
+                  <select id="pedido-prenda" name="tipoprenda" required>
+                    <option value="">Seleccione</option>
+                    <option value="camisa">Camisa</option>
+                    <option value="pantalon">Pantalón</option>
+                    <option value="chaqueta">Chaqueta</option>
+                    <option value="falda">Falda</option>
+                    <option value="vestido">Vestido</option>
+                    <option value="saco">Saco</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-cantidad">Cantidad *</label>
+                  <input id="pedido-cantidad" name="cantidad" type="number" min="1" value="1" required />
+                </div>
+
+                <div class="form-group form-group--full">
+                  <label>Talla</label>
+                  <div id="sizeGrid" class="chips-grid"></div>
+                </div>
+
+                <div class="form-group form-group--full">
+                  <label>Tela</label>
+                  <div id="fabricGrid" class="chips-grid"></div>
+                  <input id="pedido-tela" name="tela" type="hidden" />
+                </div>
+
+                <div class="form-group form-group--full">
+                  <label>Color</label>
+                  <div id="colorGrid" class="colors-grid"></div>
+                  <input id="pedido-color" name="color" type="hidden" />
+                </div>
+
+                <div class="subsection-title form-group--full">Información Financiera</div>
+
+                <div class="form-group">
+                  <label for="pedido-precio">Precio Total ($) *</label>
+                  <input id="pedido-precio" name="precio" type="number" min="0" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-anticipo">Anticipo ($)</label>
+                  <input id="pedido-anticipo" name="anticipo" type="number" min="0" value="0" />
+                </div>
+
+                <div class="form-group">
+                  <label for="pedido-saldo">Saldo Pendiente ($)</label>
+                  <input id="pedido-saldo" name="saldopendiente" type="number" readonly />
+                  <small>Se calcula automáticamente</small>
+                </div>
+
+                <div class="form-group form-group--full">
+                  <label for="pedido-observaciones">Observaciones</label>
+                  <textarea id="pedido-observaciones" name="observaciones" rows="4"></textarea>
+                </div>
+
+                <div class="subsection-title form-group--full">Notas del Pedido</div>
+
+                <div class="form-actions form-group--full">
+                  <button type="submit" class="btn btn--primary">Guardar Pedido</button>
+                  <button type="reset" class="btn btn--secondary">Limpiar</button>
+                </div>
+              </form>
+            </div>
+
+            <aside class="summary-card">
+              <h3>Resumen del pedido</h3>
+              <ul class="summary-list">
+                <li><span>Prenda</span><strong id="summaryPrenda">No seleccionada</strong></li>
+                <li><span>Talla</span><strong id="summaryTalla">No seleccionada</strong></li>
+                <li><span>Tela</span><strong id="summaryTela">No seleccionada</strong></li>
+                <li><span>Color</span><strong id="summaryColor">No seleccionado</strong></li>
+                <li><span>Cantidad</span><strong id="summaryCantidad">0</strong></li>
+                <li><span>Entrega</span><strong id="summaryEntrega">Pendiente</strong></li>
+              </ul>
+
+              <div class="summary-finance">
+                <div>
+                  <span>Total</span>
+                  <strong id="smartTotal">$0</strong>
+                </div>
+                <div>
+                  <span>Anticipo</span>
+                  <strong id="smartDeposit">$0</strong>
+                </div>
+                <div>
+                  <span>Saldo</span>
+                  <strong id="smartBalance">$0</strong>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.DashboardApp) {
+        window.DashboardApp.init();
+      }
+    });
+  </script>
+</body>
+</html>
