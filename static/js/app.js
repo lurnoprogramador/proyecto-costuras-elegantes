@@ -6,13 +6,11 @@
     selectedFabric: null,
     clients: [],
     measures: [],
-    orders: [],
-    autoPriceEnabled: true,
-    lastAutoPrice: 0
+    orders: []
   };
 
-  const $ = (selector, context = document) => context.querySelector(selector);
-  const $$ = (selector, context = document) => [...context.querySelectorAll(selector)];
+  const $ = (s, c = document) => c.querySelector(s);
+  const $$ = (s, c = document) => [...c.querySelectorAll(s)];
 
   const Utils = {
     currency(value) {
@@ -40,23 +38,15 @@
       return d.toISOString().split('T')[0];
     },
 
-    normalizeState(value) {
-      return String(value || '')
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '');
-    },
-
     showToast(message, type = 'success') {
       let wrap = document.getElementById('toastContainer');
-
       if (!wrap) {
         wrap = document.createElement('div');
         wrap.id = 'toastContainer';
         wrap.style.position = 'fixed';
         wrap.style.right = '20px';
         wrap.style.bottom = '20px';
-        wrap.style.zIndex = '99999';
+        wrap.style.zIndex = '9999';
         wrap.style.display = 'grid';
         wrap.style.gap = '10px';
         document.body.appendChild(wrap);
@@ -67,15 +57,12 @@
       toast.style.padding = '14px 16px';
       toast.style.borderRadius = '14px';
       toast.style.color = '#fff';
-      toast.style.fontWeight = '700';
       toast.style.boxShadow = '0 12px 28px rgba(0,0,0,.18)';
-      toast.style.background =
-        type === 'error'
-          ? 'rgba(181,61,85,.96)'
-          : 'rgba(47,125,85,.96)';
-
+      toast.style.background = type === 'error'
+        ? 'rgba(181,61,85,.96)'
+        : 'rgba(47,125,85,.96)';
       wrap.appendChild(toast);
-      setTimeout(() => toast.remove(), 3200);
+      setTimeout(() => toast.remove(), 3000);
     },
 
     async jsonFetch(url, options = {}) {
@@ -128,16 +115,13 @@
       overlay.classList.add('is-open');
 
       const close = () => overlay.classList.remove('is-open');
-
       $('#modalCancelBtn').onclick = close;
-      overlay.onclick = e => {
+      overlay.onclick = (e) => {
         if (e.target === overlay) close();
       };
 
-      $('#modalConfirmBtn').onclick = async () => {
-        if (typeof onConfirm === 'function') {
-          await onConfirm();
-        }
+      $('#modalConfirmBtn').onclick = () => {
+        if (typeof onConfirm === 'function') onConfirm();
         close();
       };
     }
@@ -185,6 +169,10 @@
       return res.data.items || [];
     },
 
+    async getMeasureByClient(clienteid) {
+      return Utils.jsonFetch(`/api/medidas/cliente/${clienteid}`);
+    },
+
     async getOrders() {
       const res = await Utils.jsonFetch('/api/pedidos');
       if (!res.ok) throw new Error('No se pudieron cargar pedidos');
@@ -227,18 +215,13 @@
       return Utils.jsonFetch(`/api/pedidos/${id}/cancelar`, {
         method: 'POST'
       });
-    },
-
-    async deleteOrder(id) {
-      return Utils.jsonFetch(`/api/pedidos/${id}`, {
-        method: 'DELETE'
-      });
     }
   };
 
   const Navigation = {
     init() {
       const links = $$('.sidebar-menu-link[data-section], .nav-list-link[data-section]');
+
       links.forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -275,14 +258,8 @@
       });
 
       $$('.sidebar-menu-link, .nav-list-link').forEach(link => {
-        link.classList.toggle(
-          'sidebar-menu-link--active',
-          link.dataset.section === sectionName
-        );
-        link.classList.toggle(
-          'nav-list-link--active',
-          link.dataset.section === sectionName
-        );
+        link.classList.toggle('sidebar-menu-link--active', link.dataset.section === sectionName);
+        link.classList.toggle('nav-list-link--active', link.dataset.section === sectionName);
       });
     }
   };
@@ -294,37 +271,25 @@
 
       $('#stat-pedidos-pendientes') &&
         ($('#stat-pedidos-pendientes').textContent =
-          AppState.orders.filter(
-            o => Utils.normalizeState(o.estado) === 'pendiente'
-          ).length);
+          AppState.orders.filter(o => o.estado === 'pendiente').length);
 
       $('#stat-ingresos') &&
         ($('#stat-ingresos').textContent = Utils.currency(
-          AppState.orders.reduce((sum, o) => sum + Number(o.anticipo || 0), 0)
+          AppState.orders.reduce((s, o) => s + Number(o.anticipo || 0), 0)
         ));
 
       $('#stat-pedidos-completados') &&
         ($('#stat-pedidos-completados').textContent =
-          AppState.orders.filter(o =>
-            ['entregado', 'terminado'].includes(Utils.normalizeState(o.estado))
-          ).length);
+          AppState.orders.filter(o => o.estado === 'entregado' || o.estado === 'terminado').length);
     }
   };
 
   const Clients = {
     async init() {
-      this.setAutoCode();
       this.bindForm();
       await this.load();
       this.renderSelects();
       this.renderTable();
-    },
-
-    setAutoCode() {
-      const input = $('#cliente-codigo');
-      if (input && !input.value) {
-        input.value = `CLI-${String(Date.now()).slice(-6)}`;
-      }
     },
 
     bindForm() {
@@ -336,31 +301,19 @@
         e.preventDefault();
 
         const data = Object.fromEntries(new FormData(form).entries());
-
-        if (!data.codigo) {
-          data.codigo = `CLI-${String(Date.now()).slice(-6)}`;
-        }
+        if (!data.codigo) data.codigo = `CLI-${String(Date.now()).slice(-6)}`;
 
         const res = await Api.createClient(data);
-
         if (!res.ok || !res.data.ok) {
-          return Utils.showToast(
-            res.data.message || 'Error al crear cliente',
-            'error'
-          );
+          return Utils.showToast(res.data.message || 'Error al crear cliente', 'error');
         }
 
         Utils.showToast('Cliente creado correctamente');
         form.reset();
-        this.setAutoCode();
         await this.load();
         this.renderSelects();
         this.renderTable();
         Dashboard.update();
-      });
-
-      form.addEventListener('reset', () => {
-        setTimeout(() => this.setAutoCode(), 0);
       });
     },
 
@@ -376,19 +329,11 @@
       const selects = [$('#pedido-cliente'), $('#medidas-cliente')].filter(Boolean);
 
       selects.forEach(select => {
-        const currentValue = select.value;
         select.innerHTML =
           `<option value="">Seleccione un cliente</option>` +
           AppState.clients
-            .map(
-              c =>
-                `<option value="${c.codigo}">${c.codigo} - ${c.nombre} ${c.apellido}</option>`
-            )
+            .map(c => `<option value="${c.codigo}">${c.codigo} - ${c.nombre} ${c.apellido}</option>`)
             .join('');
-
-        if (currentValue) {
-          select.value = currentValue;
-        }
       });
     },
 
@@ -396,9 +341,7 @@
       const tbody = $('#clientesTableBody');
       if (!tbody) return;
 
-      tbody.innerHTML = AppState.clients
-        .map(
-          c => `
+      tbody.innerHTML = AppState.clients.map(c => `
         <tr>
           <td>${c.codigo || '-'}</td>
           <td>${c.nombre || '-'}</td>
@@ -408,9 +351,7 @@
           <td>${c.email || '-'}</td>
           <td>-</td>
         </tr>
-      `
-        )
-        .join('');
+      `).join('');
     }
   };
 
@@ -432,10 +373,7 @@
         const res = await Api.createMeasures(data);
 
         if (!res.ok || !res.data.ok) {
-          return Utils.showToast(
-            res.data.message || 'Error al guardar medidas',
-            'error'
-          );
+          return Utils.showToast(res.data.message || 'Error al guardar medidas', 'error');
         }
 
         Utils.showToast('Medidas guardadas correctamente');
@@ -460,14 +398,16 @@
       this.setAutoCode();
       this.bindInputs();
       this.bindForm();
+      this.bindClientMeasurePreview();
       await this.load();
+      this.renderTable();
+      this.updateSummary();
+      this.calculatePrice();
+      this.autoEstimateDate();
       this.renderSizeOptions();
       this.renderFabricOptions();
       this.renderColorOptions();
-      this.renderTable();
-      this.updateSummary();
-      this.calculatePrice(true);
-      this.autoEstimateDate();
+      this.resetMeasurePreview();
     },
 
     setAutoCode() {
@@ -478,85 +418,120 @@
     },
 
     bindInputs() {
-      ['pedido-prenda', 'pedido-cantidad', 'pedido-estado', 'pedido-fecha-entrega', 'pedido-color', 'pedido-tela'].forEach(id => {
+      [
+        'pedido-prenda',
+        'pedido-cantidad',
+        'pedido-precio',
+        'pedido-anticipo',
+        'pedido-estado',
+        'pedido-fecha-entrega',
+        'pedido-color',
+        'pedido-tela'
+      ].forEach(id => {
         const el = document.getElementById(id);
         if (!el || el.dataset.bound === '1') return;
         el.dataset.bound = '1';
 
         el.addEventListener('input', () => {
-          if (AppState.autoPriceEnabled) this.calculatePrice(true);
-          else this.calculatePrice(false);
-
+          this.calculatePrice();
           this.autoEstimateDate();
           this.updateSummary();
         });
 
         el.addEventListener('change', () => {
-          if (AppState.autoPriceEnabled) this.calculatePrice(true);
-          else this.calculatePrice(false);
-
+          this.calculatePrice();
           this.autoEstimateDate();
           this.updateSummary();
         });
       });
+    },
 
-      const priceInput = document.getElementById('pedido-precio');
-      if (priceInput && priceInput.dataset.bound !== '1') {
-        priceInput.dataset.bound = '1';
+    bindClientMeasurePreview() {
+      const clientSelect = $('#pedido-cliente');
+      if (!clientSelect || clientSelect.dataset.measureBound === '1') return;
+      clientSelect.dataset.measureBound = '1';
 
-        priceInput.addEventListener('focus', () => {
-          AppState.autoPriceEnabled = false;
-        });
+      clientSelect.addEventListener('change', async () => {
+        const clienteid = clientSelect.value;
 
-        priceInput.addEventListener('input', () => {
-          const raw = priceInput.value.trim();
+        if (!clienteid) {
+          this.resetMeasurePreview();
+          return;
+        }
 
-          if (raw === '') {
-            $('#smartTotal') &&
-              ($('#smartTotal').textContent = Utils.currency(0));
+        await this.loadMeasurePreview(clienteid);
+      });
+    },
 
-            const anticipo = Number($('#pedido-anticipo')?.value || 0);
-            const saldo = Math.max(0 - anticipo, 0);
+    resetMeasurePreview() {
+      const ids = [
+        'mv-cuello',
+        'mv-hombro',
+        'mv-pecho',
+        'mv-cintura',
+        'mv-cadera',
+        'mv-tiro',
+        'mv-largopantalon',
+        'mv-entrepierna',
+        'mv-largototal',
+        'mv-largomanga',
+        'mv-anchomanga',
+        'mv-contornobrazo',
+        'mv-muneca'
+      ];
 
-            $('#pedido-saldo') && ($('#pedido-saldo').value = saldo);
-            $('#smartDeposit') &&
-              ($('#smartDeposit').textContent = Utils.currency(anticipo));
-            $('#smartBalance') &&
-              ($('#smartBalance').textContent = Utils.currency(saldo));
-            return;
-          }
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '-';
+      });
 
-          const manual = Number(raw);
-          if (!Number.isNaN(manual)) {
-            AppState.lastAutoPrice = manual;
-          }
+      const status = document.getElementById('pedidoMeasureStatus');
+      if (status) status.textContent = 'Seleccione un cliente';
 
-          this.calculatePrice(false);
-          this.updateSummary();
-        });
+      const obs = document.getElementById('pedidoMeasureObs');
+      if (obs) obs.textContent = 'Sin observaciones.';
+    },
 
-        priceInput.addEventListener('blur', () => {
-          if (priceInput.value.trim() === '') {
-            AppState.autoPriceEnabled = true;
-            this.calculatePrice(true);
-          }
-        });
+    async loadMeasurePreview(clienteid) {
+      const status = document.getElementById('pedidoMeasureStatus');
+      const obs = document.getElementById('pedidoMeasureObs');
+
+      if (status) status.textContent = 'Cargando medidas...';
+      if (obs) obs.textContent = 'Buscando registro más reciente del cliente.';
+
+      const res = await Api.getMeasureByClient(clienteid);
+
+      if (!res.ok || !res.data.ok) {
+        this.resetMeasurePreview();
+        if (status) status.textContent = 'Sin medidas registradas';
+        if (obs) obs.textContent = res.data.message || 'Este cliente aún no tiene medidas guardadas.';
+        return;
       }
 
-      const anticipoInput = document.getElementById('pedido-anticipo');
-      if (anticipoInput && anticipoInput.dataset.bound !== '1') {
-        anticipoInput.dataset.bound = '1';
+      const m = res.data.item || {};
+      const map = {
+        'mv-cuello': m.cuello,
+        'mv-hombro': m.hombro,
+        'mv-pecho': m.pecho,
+        'mv-cintura': m.cintura,
+        'mv-cadera': m.cadera,
+        'mv-tiro': m.tiro,
+        'mv-largopantalon': m.largopantalon,
+        'mv-entrepierna': m.entrepierna,
+        'mv-largototal': m.largototal,
+        'mv-largomanga': m.largomanga,
+        'mv-anchomanga': m.anchomanga,
+        'mv-contornobrazo': m.contornobrazo,
+        'mv-muneca': m.muneca
+      };
 
-        anticipoInput.addEventListener('input', () => {
-          this.calculatePrice(false);
-          this.updateSummary();
-        });
+      Object.entries(map).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value || '-';
+      });
 
-        anticipoInput.addEventListener('change', () => {
-          this.calculatePrice(false);
-          this.updateSummary();
-        });
-      }
+      if (status) status.textContent = 'Medidas encontradas';
+      if (obs) obs.textContent = m.observaciones || 'Sin observaciones.';
     },
 
     bindForm() {
@@ -572,15 +547,8 @@
         data.color = data.color || AppState.selectedColor || '';
         data.tela = data.tela || AppState.selectedFabric || '';
 
-        const precioRaw = $('#pedido-precio')?.value?.trim() || '';
-        if (precioRaw === '') {
-          return Utils.showToast(
-            'Debe ingresar o confirmar el precio del pedido',
-            'error'
-          );
-        }
-
         let res;
+
         if (this.editingOrderId) {
           res = await Api.updateOrder(this.editingOrderId, data);
         } else {
@@ -588,10 +556,7 @@
         }
 
         if (!res.ok || !res.data.ok) {
-          return Utils.showToast(
-            res.data.message || 'Error al guardar pedido',
-            'error'
-          );
+          return Utils.showToast(res.data.message || 'Error al guardar pedido', 'error');
         }
 
         Utils.showToast(
@@ -605,18 +570,17 @@
         AppState.selectedSize = null;
         AppState.selectedColor = null;
         AppState.selectedFabric = null;
-        AppState.autoPriceEnabled = true;
 
         this.setAutoCode();
-        this.renderSizeOptions();
-        this.renderFabricOptions();
-        this.renderColorOptions();
-
+        this.resetMeasurePreview();
         await this.load();
         this.renderTable();
         this.updateSummary();
-        this.calculatePrice(true);
+        this.calculatePrice();
         this.autoEstimateDate();
+        this.renderSizeOptions();
+        this.renderFabricOptions();
+        this.renderColorOptions();
         Dashboard.update();
       });
 
@@ -626,14 +590,14 @@
           AppState.selectedSize = null;
           AppState.selectedColor = null;
           AppState.selectedFabric = null;
-          AppState.autoPriceEnabled = true;
           this.setAutoCode();
+          this.resetMeasurePreview();
+          this.calculatePrice();
+          this.autoEstimateDate();
+          this.updateSummary();
           this.renderSizeOptions();
           this.renderFabricOptions();
           this.renderColorOptions();
-          this.calculatePrice(true);
-          this.autoEstimateDate();
-          this.updateSummary();
         }, 0);
       });
     },
@@ -646,31 +610,27 @@
       }
     },
 
-    calculatePrice(forceAuto = false) {
-      const cantidad = Math.max(Number($('#pedido-cantidad')?.value || 1), 1);
+    calculatePrice() {
+      const prenda = $('#pedido-prenda')?.value || 'otro';
+      const cantidad = Number($('#pedido-cantidad')?.value || 1);
       const precioInput = $('#pedido-precio');
       const anticipoInput = $('#pedido-anticipo');
       const saldoInput = $('#pedido-saldo');
 
+      const base = Catalog.prendas[prenda] || 0;
       const fabric = Catalog.telas[AppState.selectedFabric] || 0;
-      const auto = Math.round(fabric * cantidad);
-      AppState.lastAutoPrice = auto;
+      const sizeFactor =
+        ['XL', 'XXL'].includes(AppState.selectedSize)
+          ? 1.12
+          : AppState.selectedSize === 'XS'
+            ? 0.96
+            : 1;
 
-      let total = 0;
-      const rawValue = precioInput?.value?.trim?.() ?? '';
+      const auto = Math.round((base + fabric) * sizeFactor * Math.max(cantidad, 1));
+      const manual = Number(precioInput?.value || 0);
+      const total = manual > 0 ? manual : auto;
 
-      if (forceAuto || AppState.autoPriceEnabled) {
-        total = auto;
-        if (precioInput) precioInput.value = auto;
-        AppState.autoPriceEnabled = true;
-      } else {
-        if (rawValue === '') {
-          total = 0;
-        } else {
-          const manual = Number(rawValue);
-          total = Number.isNaN(manual) ? 0 : manual;
-        }
-      }
+      if (precioInput && manual === 0) precioInput.value = total;
 
       const anticipo = Number(anticipoInput?.value || 0);
       const saldo = Math.max(total - anticipo, 0);
@@ -678,16 +638,13 @@
       if (saldoInput) saldoInput.value = saldo;
 
       $('#smartTotal') && ($('#smartTotal').textContent = Utils.currency(total));
-      $('#smartDeposit') &&
-        ($('#smartDeposit').textContent = Utils.currency(anticipo));
-      $('#smartBalance') &&
-        ($('#smartBalance').textContent = Utils.currency(saldo));
+      $('#smartDeposit') && ($('#smartDeposit').textContent = Utils.currency(anticipo));
+      $('#smartBalance') && ($('#smartBalance').textContent = Utils.currency(saldo));
     },
 
     autoEstimateDate() {
       const prenda = $('#pedido-prenda')?.value || 'otro';
       const cantidad = Number($('#pedido-cantidad')?.value || 1);
-
       const daysMap = {
         camisa: 4,
         pantalon: 5,
@@ -699,40 +656,28 @@
       };
 
       const dateInput = $('#pedido-fecha-entrega');
-
       if (dateInput && !dateInput.value) {
         dateInput.value = Utils.daysFromNow(
-          (daysMap[prenda] || 5) +
-            (cantidad > 1 ? Math.ceil(cantidad / 2) : 0)
+          (daysMap[prenda] || 5) + (cantidad > 1 ? Math.ceil(cantidad / 2) : 0)
         );
       }
 
       $('#etaText') &&
-        ($('#etaText').textContent = `Entrega sugerida: ${Utils.formatDate(
-          dateInput?.value
-        )}`);
+        ($('#etaText').textContent = `Entrega sugerida: ${Utils.formatDate(dateInput?.value)}`);
       $('#summaryEntrega') &&
         ($('#summaryEntrega').textContent = Utils.formatDate(dateInput?.value));
     },
 
     updateSummary() {
-      const summaryMap = {
-        summaryPrenda:
-          $('#pedido-prenda')?.selectedOptions?.[0]?.textContent ||
-          'No seleccionada',
+      const map = {
+        summaryPrenda: $('#pedido-prenda')?.selectedOptions?.[0]?.textContent || 'No seleccionada',
         summaryTalla: AppState.selectedSize || 'No seleccionada',
-        summaryTela:
-          $('#pedido-tela')?.value ||
-          AppState.selectedFabric ||
-          'No seleccionada',
-        summaryColor:
-          $('#pedido-color')?.value ||
-          AppState.selectedColor ||
-          'No seleccionado',
+        summaryTela: $('#pedido-tela')?.value || AppState.selectedFabric || 'No seleccionada',
+        summaryColor: $('#pedido-color')?.value || AppState.selectedColor || 'No seleccionado',
         summaryCantidad: $('#pedido-cantidad')?.value || '0'
       };
 
-      Object.entries(summaryMap).forEach(([id, value]) => {
+      Object.entries(map).forEach(([id, value]) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
       });
@@ -742,24 +687,17 @@
       const grid = $('#sizeGrid');
       if (!grid) return;
 
-      grid.innerHTML = Catalog.tallas
-        .map(
-          size => `
+      grid.innerHTML = Catalog.tallas.map(size => `
         <button type="button" class="chip ${AppState.selectedSize === size ? 'is-active' : ''}" data-size="${size}">
           ${size}
         </button>
-      `
-        )
-        .join('');
+      `).join('');
 
       grid.querySelectorAll('[data-size]').forEach(btn => {
         btn.addEventListener('click', () => {
           AppState.selectedSize = btn.dataset.size;
           this.renderSizeOptions();
-
-          if (AppState.autoPriceEnabled) this.calculatePrice(true);
-          else this.calculatePrice(false);
-
+          this.calculatePrice();
           this.updateSummary();
         });
       });
@@ -769,28 +707,19 @@
       const grid = $('#fabricGrid');
       if (!grid) return;
 
-      grid.innerHTML = Object.entries(Catalog.telas)
-        .map(
-          ([k, v]) => `
+      grid.innerHTML = Object.entries(Catalog.telas).map(([k, v]) => `
         <button type="button" class="chip ${AppState.selectedFabric === k ? 'is-active' : ''}" data-fabric="${k}">
           ${k}<br><small>${Utils.currency(v)}</small>
         </button>
-      `
-        )
-        .join('');
+      `).join('');
 
       grid.querySelectorAll('[data-fabric]').forEach(btn => {
         btn.addEventListener('click', () => {
           AppState.selectedFabric = btn.dataset.fabric;
-
           const tela = $('#pedido-tela');
           if (tela) tela.value = btn.dataset.fabric;
-
           this.renderFabricOptions();
-
-          if (AppState.autoPriceEnabled) this.calculatePrice(true);
-          else this.calculatePrice(false);
-
+          this.calculatePrice();
           this.updateSummary();
         });
       });
@@ -800,26 +729,22 @@
       const grid = $('#colorGrid');
       if (!grid) return;
 
-      grid.innerHTML = Catalog.colores
-        .map(
-          c => `
-        <button type="button" class="color-option ${AppState.selectedColor === c.value ? 'is-active' : ''}" data-color="${c.value}" style="background:${c.hex}">
+      grid.innerHTML = Catalog.colores.map(c => `
+        <button
+          type="button"
+          class="color-option ${AppState.selectedColor === c.value ? 'is-active' : ''}"
+          data-color="${c.value}"
+          style="background:${c.hex}">
           <span>${c.name}</span>
         </button>
-      `
-        )
-        .join('');
+      `).join('');
 
       grid.querySelectorAll('[data-color]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const chosen = Catalog.colores.find(
-            c => c.value === btn.dataset.color
-          );
+          const chosen = Catalog.colores.find(c => c.value === btn.dataset.color);
           AppState.selectedColor = btn.dataset.color;
-
           const colorInput = $('#pedido-color');
           if (colorInput && chosen) colorInput.value = chosen.name;
-
           this.renderColorOptions();
           this.updateSummary();
         });
@@ -830,61 +755,70 @@
       const res = await Api.getOrderById(orderId);
 
       if (!res.ok || !res.data.ok) {
-        return Utils.showToast(
-          res.data.message || 'No se pudo cargar el pedido',
-          'error'
-        );
+        return Utils.showToast(res.data.message || 'No se pudo cargar el pedido', 'error');
       }
 
       const order = res.data.item;
       this.editingOrderId = order._id;
 
       $('#pedido-codigo') && ($('#pedido-codigo').value = order.codigo || '');
-      $('#pedido-cliente') &&
-        ($('#pedido-cliente').value = order.clienteid || '');
-      $('#pedido-fecha-entrega') &&
-        ($('#pedido-fecha-entrega').value =
-          String(order.fechaentrega || '').split('T')[0] || '');
-
+      $('#pedido-cliente') && ($('#pedido-cliente').value = order.clienteid || '');
+      $('#pedido-fecha-entrega') && ($('#pedido-fecha-entrega').value = order.fechaentrega || '');
       $('#pedido-estado') && ($('#pedido-estado').value = order.estado || '');
-      $('#pedido-prenda') &&
-        ($('#pedido-prenda').value = order.tipoprenda || '');
-      $('#pedido-cantidad') &&
-        ($('#pedido-cantidad').value = order.cantidad || 1);
+      $('#pedido-prenda') && ($('#pedido-prenda').value = order.tipoprenda || '');
+      $('#pedido-cantidad') && ($('#pedido-cantidad').value = order.cantidad || 1);
       $('#pedido-tela') && ($('#pedido-tela').value = order.tela || '');
       $('#pedido-color') && ($('#pedido-color').value = order.color || '');
       $('#pedido-precio') && ($('#pedido-precio').value = order.precio || 0);
-      $('#pedido-anticipo') &&
-        ($('#pedido-anticipo').value = order.anticipo || 0);
-      $('#pedido-saldo') &&
-        ($('#pedido-saldo').value = order.saldopendiente || 0);
-      $('#pedido-observaciones') &&
-        ($('#pedido-observaciones').value = order.observaciones || '');
+      $('#pedido-anticipo') && ($('#pedido-anticipo').value = order.anticipo || 0);
+      $('#pedido-saldo') && ($('#pedido-saldo').value = order.saldopendiente || 0);
+      $('#pedido-observaciones') && ($('#pedido-observaciones').value = order.observaciones || '');
 
       AppState.selectedFabric =
-        Object.keys(Catalog.telas).find(
-          k => k === String(order.tela || '').toLowerCase()
-        ) || null;
+        Object.keys(Catalog.telas).find(k => k === String(order.tela || '').toLowerCase()) || null;
 
       AppState.selectedColor =
-        Catalog.colores.find(
-          c => c.name === order.color || c.value === order.color
-        )?.value || null;
+        Catalog.colores.find(c => c.name === order.color || c.value === order.color)?.value || null;
 
       AppState.selectedSize = order.talla || null;
-      AppState.autoPriceEnabled = false;
 
       this.renderSizeOptions();
       this.renderFabricOptions();
       this.renderColorOptions();
-      this.calculatePrice(false);
+      this.calculatePrice();
       this.updateSummary();
+
+      if (order.clienteid) {
+        await this.loadMeasurePreview(order.clienteid);
+      } else {
+        this.resetMeasurePreview();
+      }
 
       Navigation.showSection('pedidos-crear');
       Utils.showToast('Pedido cargado para edición');
     },
 
-    bindRowActions(tbody) {
+    renderTable() {
+      const tbody = $('#pedidosTableBody');
+      if (!tbody) return;
+
+      tbody.innerHTML = AppState.orders.map((o, i) => `
+        <tr>
+          <td>${o.codigo || '-'}</td>
+          <td>${o.clienteid || '-'}</td>
+          <td>${o.tipoprenda || '-'}</td>
+          <td>${o.cantidad || 1}</td>
+          <td>${o.estado || 'pendiente'}</td>
+          <td>${Utils.currency(o.precio || 0)}</td>
+          <td style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn--secondary" data-edit="${o._id || i}">Editar</button>
+            <button type="button" class="btn btn--secondary" data-view="${o._id || i}">Resumen</button>
+            <button type="button" class="btn btn--secondary" data-abono="${o._id || i}">Abonar</button>
+            <button type="button" class="btn btn--secondary" data-cancel="${o._id || i}">Cancelar</button>
+          </td>
+        </tr>
+      `).join('');
+
       tbody.querySelectorAll('[data-edit]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const order =
@@ -906,7 +840,12 @@
 
           Utils.openModal({
             title: `Resumen ${order.codigo || ''}`,
-            message: `Cliente: ${order.clienteid || '-'} · Prenda: ${order.tipoprenda || '-'} · Total: ${Utils.currency(order.precio || 0)} · Abono: ${Utils.currency(order.anticipo || 0)} · Saldo: ${Utils.currency(order.saldopendiente || 0)}`
+            message:
+              `Cliente: ${order.clienteid || '-'} · ` +
+              `Prenda: ${order.tipoprenda || '-'} · ` +
+              `Total: ${Utils.currency(order.precio || 0)} · ` +
+              `Abono: ${Utils.currency(order.anticipo || 0)} · ` +
+              `Saldo: ${Utils.currency(order.saldopendiente || 0)}`
           });
         });
       });
@@ -917,48 +856,26 @@
             AppState.orders.find(o => (o._id || '') === btn.dataset.abono) ||
             AppState.orders[Number(btn.dataset.abono)];
 
-          if (!order || !order._id) return;
+          if (!order) return;
 
-          const abonoTexto = prompt(
-            `Abono adicional para ${order.codigo}\nAnticipo actual: ${Utils.currency(order.anticipo || 0)}`,
-            '0'
-          );
+          const deposit = prompt('Nuevo abono:', order.anticipo || 0);
+          if (deposit === null) return;
 
-          if (abonoTexto === null) return;
-
-          const abonoAdicional = Number(abonoTexto);
-
-          if (Number.isNaN(abonoAdicional) || abonoAdicional <= 0) {
-            return Utils.showToast(
-              'Ingrese un abono válido mayor que 0',
-              'error'
-            );
-          }
-
-          const anticipoActual = Number(order.anticipo || 0);
-          const precioActual = Number(order.precio || 0);
-          const nuevoAnticipo = anticipoActual + abonoAdicional;
-
-          if (nuevoAnticipo > precioActual) {
-            return Utils.showToast(
-              'El abono no puede superar el valor total del pedido',
-              'error'
-            );
+          const anticipo = Number(deposit);
+          if (Number.isNaN(anticipo) || anticipo < 0) {
+            return Utils.showToast('Abono inválido', 'error');
           }
 
           const res = await Api.updateOrder(order._id, {
-            anticipo: abonoAdicional,
-            sumar_abono: true
+            anticipo,
+            precio: Number(order.precio || 0)
           });
 
           if (!res.ok || !res.data.ok) {
-            return Utils.showToast(
-              res.data.message || 'No se pudo actualizar el abono',
-              'error'
-            );
+            return Utils.showToast(res.data.message || 'No se pudo actualizar', 'error');
           }
 
-          Utils.showToast('Abono actualizado correctamente');
+          Utils.showToast('Abono actualizado');
           await this.load();
           this.renderTable();
           Dashboard.update();
@@ -971,11 +888,7 @@
             AppState.orders.find(o => (o._id || '') === btn.dataset.cancel) ||
             AppState.orders[Number(btn.dataset.cancel)];
 
-          if (!order || !order._id) return;
-
-          if (Utils.normalizeState(order.estado) === 'cancelado') {
-            return Utils.showToast('Este pedido ya está cancelado', 'error');
-          }
+          if (!order) return;
 
           Utils.openModal({
             title: `Cancelar ${order.codigo || ''}`,
@@ -985,13 +898,10 @@
               const res = await Api.cancelOrder(order._id);
 
               if (!res.ok || !res.data.ok) {
-                return Utils.showToast(
-                  res.data.message || 'No se pudo cancelar',
-                  'error'
-                );
+                return Utils.showToast(res.data.message || 'No se pudo cancelar', 'error');
               }
 
-              Utils.showToast('Pedido cancelado correctamente');
+              Utils.showToast('Pedido cancelado', 'error');
               await this.load();
               this.renderTable();
               Dashboard.update();
@@ -999,72 +909,6 @@
           });
         });
       });
-
-      tbody.querySelectorAll('[data-delete]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const order =
-            AppState.orders.find(o => (o._id || '') === btn.dataset.delete) ||
-            AppState.orders[Number(btn.dataset.delete)];
-
-          if (!order || !order._id) return;
-
-          Utils.openModal({
-            title: `Eliminar ${order.codigo || ''}`,
-            message: 'Esta acción eliminará el pedido definitivamente del sistema.',
-            confirmText: 'Sí, eliminar',
-            onConfirm: async () => {
-              const res = await Api.deleteOrder(order._id);
-
-              if (!res.ok || !res.data.ok) {
-                return Utils.showToast(
-                  res.data.message || 'No se pudo eliminar el pedido',
-                  'error'
-                );
-              }
-
-              Utils.showToast('Pedido eliminado correctamente');
-              await this.load();
-              this.renderTable();
-              Dashboard.update();
-            }
-          });
-        });
-      });
-    },
-
-    renderTable() {
-      const tbody = $('#pedidosTableBody');
-      if (!tbody) return;
-
-      tbody.innerHTML = AppState.orders
-        .map((o, i) => {
-          const estadoNormalizado = Utils.normalizeState(o.estado || 'pendiente');
-
-          return `
-          <tr>
-            <td>${o.codigo || '-'}</td>
-            <td>${o.clienteid || '-'}</td>
-            <td>${o.tipoprenda || '-'}</td>
-            <td>${o.cantidad || 1}</td>
-            <td>
-              <span class="estado-badge estado-${estadoNormalizado}">
-                ${o.estado || 'pendiente'}
-              </span>
-            </td>
-            <td>${Utils.currency(o.precio || 0)}</td>
-            <td style="display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" class="btn btn--secondary" data-edit="${o._id || i}">Editar</button>
-              <button type="button" class="btn btn--secondary" data-view="${o._id || i}">Resumen</button>
-              <button type="button" class="btn btn--secondary" data-abono="${o._id || i}">Abonar</button>
-              <button type="button" class="btn btn--secondary" data-cancel="${o._id || i}">Cancelar</button>
-              <button type="button" class="btn btn--danger" data-delete="${o._id || i}">Eliminar</button>
-            </td>
-          </tr>
-        `;
-        })
-        .join('');
-
-      this.bindRowActions(tbody);
     }
   };
 
@@ -1100,8 +944,7 @@
         if (!username || !password || !role) {
           if (errorBox && errorMsg) {
             errorBox.style.display = 'block';
-            errorMsg.textContent =
-              'Debe completar usuario, contraseña y rol.';
+            errorMsg.textContent = 'Debe completar usuario, contraseña y rol.';
           }
           return;
         }
@@ -1120,8 +963,7 @@
           if (!res.ok || !data.ok) {
             if (errorBox && errorMsg) {
               errorBox.style.display = 'block';
-              errorMsg.textContent =
-                data.message || 'No fue posible iniciar sesión.';
+              errorMsg.textContent = data.message || 'No fue posible iniciar sesión.';
             }
             return;
           }
@@ -1131,8 +973,7 @@
         } catch {
           if (errorBox && errorMsg) {
             errorBox.style.display = 'block';
-            errorMsg.textContent =
-              'No fue posible conectar con el servidor.';
+            errorMsg.textContent = 'No fue posible conectar con el servidor.';
           }
         } finally {
           submitBtn && (submitBtn.disabled = false);
@@ -1156,9 +997,7 @@
       }
 
       const currentUserName = $('#currentUserName');
-      if (currentUserName) {
-        currentUserName.textContent = AppState.user?.name || 'Usuario';
-      }
+      if (currentUserName) currentUserName.textContent = AppState.user?.name || 'Usuario';
 
       Navigation.init();
       await Clients.init();
@@ -1176,11 +1015,9 @@
         const btn = document.getElementById(btnId);
         const menu = document.getElementById(menuId);
         if (!btn || !menu) return;
-
         menu.style.display = 'none';
         btn.addEventListener('click', () => {
-          menu.style.display =
-            menu.style.display === 'none' ? 'block' : 'none';
+          menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
         });
       });
     }

@@ -6,6 +6,32 @@ def get_all_measures(db, serialize_doc):
     return [serialize_doc(item) for item in items]
 
 
+def get_latest_measure_by_client(db, clienteid, serialize_doc):
+    clienteid = (clienteid or "").strip()
+
+    if not clienteid:
+        return {
+            "ok": False,
+            "message": "Debe enviar un cliente válido."
+        }, 400
+
+    item = db.medidas.find_one(
+        {"clienteid": clienteid},
+        sort=[("_id", -1)]
+    )
+
+    if not item:
+        return {
+            "ok": False,
+            "message": "Este cliente no tiene medidas registradas."
+        }, 404
+
+    return {
+        "ok": True,
+        "item": serialize_doc(item)
+    }, 200
+
+
 def create_measure(db, data):
     clienteid = (data.get("clienteid") or "").strip()
 

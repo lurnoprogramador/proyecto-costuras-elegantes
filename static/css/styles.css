@@ -968,3 +968,73 @@ table tbody tr:hover {
 .btn--danger:hover {
   background: #972d43;
 }
+
+.measure-preview-card {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f7f8fb;
+  border: 1px solid #dfe4ea;
+  grid-column: 1 / -1;
+}
+
+.measure-preview-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.measure-preview-card__header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.measure-preview-card__header span {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.measure-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 14px;
+}
+
+.measure-preview-grid div {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #374151;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.measure-preview-grid strong {
+  margin-right: 6px;
+  color: #111827;
+}
+
+.measure-preview-obs {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+@media (max-width: 768px) {
+  .measure-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .measure-preview-card {
+    padding: 14px;
+  }
+}
