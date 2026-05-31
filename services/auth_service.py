@@ -1,36 +1,56 @@
-from werkzeug.security import generate_password_hash, check_password_hash
-from db.mongo import usuarios_col
-
-def seed_default_admin():
-    existing = usuarios_col.find_one({"username": "admin"})
-    if existing:
-        return
-
-    usuarios_col.insert_one({
+USERS = [
+    {
+        "id": 1,
         "username": "admin",
-        "password": generate_password_hash("Admin12345"),
+        "password": "123456",
         "role": "admin",
-        "nombre": "Administrador Principal"
-    })
+        "name": "Administrador"
+    },
+    {
+        "id": 2,
+        "username": "empleado",
+        "password": "123456",
+        "role": "employee",
+        "name": "Empleado"
+    }
+]
 
-def login_user(username, password, role):
-    user = usuarios_col.find_one({
-        "username": username,
-        "role": role
-    })
+
+def authenticate_user(username, password, role):
+    username = (username or "").strip()
+    password = (password or "").strip()
+    role = (role or "").strip()
+
+    if not username or not password or not role:
+        return {
+            "ok": False,
+            "message": "Debe completar usuario, contraseña y rol."
+        }
+
+    user = next(
+        (
+            u for u in USERS
+            if u["username"] == username
+            and u["password"] == password
+            and u["role"] == role
+        ),
+        None
+    )
 
     if not user:
-        return {"ok": False, "message": "Usuario no encontrado"}, 404
+        return {
+            "ok": False,
+            "message": "Credenciales inválidas."
+        }
 
-    if not check_password_hash(user["password"], password):
-        return {"ok": False, "message": "Contraseña incorrecta"}, 401
+    safe_user = {
+        "id": user["id"],
+        "username": user["username"],
+        "role": user["role"],
+        "name": user["name"]
+    }
 
     return {
         "ok": True,
-        "message": "Login correcto",
-        "user": {
-            "username": user["username"],
-            "role": user["role"],
-            "nombre": user.get("nombre", user["username"])
-        }
-    }, 200
+        "user": safe_user
+    }

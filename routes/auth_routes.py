@@ -1,18 +1,35 @@
-from flask import Blueprint, request, jsonify
-from services.auth_service import login_user, seed_default_admin
+from flask import Blueprint, request, jsonify, session
+from services.auth_service import authenticate_user
 
-auth_bp = Blueprint("auth", __name__)
+auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
-seed_default_admin()
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
-    result, status = login_user(
-        data.get("username", "").strip(),
-        data.get("password", "").strip(),
-        data.get("role", "").strip()
+    result = authenticate_user(
+        data.get("username"),
+        data.get("password"),
+        data.get("role")
     )
 
-    return jsonify(result), status
+    if not result["ok"]:
+        return jsonify(result), 401
+
+    session["user"] = result["user"]
+    return jsonify(result)
+
+
+@auth_bp.route("/me", methods=["GET"])
+def me():
+    user = session.get("user")
+    if not user:
+        return jsonify({"ok": False, "message": "No hay sesión activa."}), 401
+    return jsonify({"ok": True, "user": user})
+
+
+@auth_bp.route("/logout", methods=["POST"])
+def logout():
+    session.pop("user", None)
+    return jsonify({"ok": True, "message": "Sesión cerrada correctamente."})
